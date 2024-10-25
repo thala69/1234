@@ -1,0 +1,452 @@
+Exp1: IP spoofing
+cd /root/netkit
+export /path=/root/netkit/bin:$path
+./check_configuration.sh
+Step 1: vstart pc1 –eth0=A 
+OR
+vstart pc1 --eth0 == A
+
+Step 2: Assign IP addresses to PC1,PC2 and PC3 as 192.168.1.11, 192.168.1.12 and
+192.168.1.13 respectivley.
+
+ifconfig eth0 192.168.1.11
+
+Step 3: Ping without address spoofing
+ping pc1 to pc2 pc3
+ping pc2 to pc1
+ping pc3 to pc1
+use command ping {ip of pc to be pinged}
+
+
+
+Step 4:
+Spoof the IP address of PC2 to create false identity by PC1
+iptables -t nat -A POSTROUTING -p icmp -j SNAT --to-source 192.168.1.12    in pc1 
+
+Step 5: Packets are caputred using tcpdump. As response will be sent from PC3 to
+PC2, tcpdump command is executed on PC2 so that it can capture the reply
+
+tcpdump -i any  on pc2 and pc3 
+
+Step 6: As tcpdump is in listening state on PC2 , we can ping PC3 from PC1 to
+check to outocmes of IP spoofing attack.The ping command triggers ICMP Echo
+Request packets to be sent to the destination IP address every one second. When a
+computer receives an ICMP Echo Request it will reply with a ICMP Echo Reply.
+
+tcpdump -i any icmp on pc2 and pc3
+
+Step 7: Due to IP spoofing attack done by PC1, for PC3 the ping request is from PC2
+so reply which is given back is for PC2.
+
+
+
+
+Exp2: squid proxy
+
+Installation of SQUID:
+Command : sudo apt-get install squid
+
+cd /etc/squid
+ls
+
+sudo /etc/init.d/squid status
+
+visit network setting in firefox proxy setting -> manual proxy config
+
+ sudo cp /etc/squid/squid.conf squid.conf.copy
+ls
+
+
+changes to be made in conf file 
+
+visible_hostname ojas 
+
+
+look for ACL elements and access list
+
+acl localhost src 127.0.0.1/32 
+acl localnet src 192.168.0.40/24 192.168.0.0./16 
+
+The two lines below are access list rules and represent an explicit implementation of the 
+ACL directives mentioned earlier. In few words, they indicate that http access should be 
+granted if the request comes from the local network (localnet), or from localhost.
+http_access allow localnet 
+http_access allow localnet
+
+mv /etc/squid/squid.conf
+
+mv /etc/squid/squid.conf
+/etc/squid/squid.conf.bkp root@apsit-HP-245-G4-Notebook-PC:~$ grep -ve ^# -ve
+^$ /etc/squid/squid.conf.bkp > /etc/squid/squid.conf
+
+Now, open the newly created squid.conf file, and look for (or add) the following ACL
+elements and access lists.
+acl localhost src 127.0.0.1/32
+acl localnet src 192.168.0.40/24 192.168.0.0./16
+http_access allow localnet
+Verifying that a Client is Accessing the Internet
+1. In your client, use a web browser to open any web site .
+2. In the server, run following command line to view of requests being served through Squid.
+root@apsit-HP-245-G4-Notebook-PC:/etc/squid$ sudo tail -f /var/log/squid/access.log
+
+1. Define a new ACL directive as follows
+acl resclient src 192.168.0.104
+2. Add the ACL directive to the localnet access list that is already in place, but prefacing
+it with an exclamation sign. This means, “Allow Internet access to clients matching the
+localnet ACL directive except to the one that matches the resclient directive”.
+http_access allow localnet !resclient
+
+
+
+Exp3a:
+
+
+sudo iptables -L
+
+iptables -F
+
+iptables -P INPUT DROP
+iptables -P OUTPUT DROP
+iptables -P FORWARD DROP
+
+
+
+
+Allow Established and Related Incoming Connections
+sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+Allow Established Outgoing Connections
+sudo iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED -j ACCEPT
+
+Allow All Incoming SSH
+iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j
+ACCEPT
+
+Allow outgoing SSH to Specific IP address or subnet
+sudo iptables -A INPUT -p tcp -s 15.15.15.0/24 --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+
+Allow Incoming Rsync from Specific IP Address or Subnet
+iptables -A INPUT -p tcp -s 15.15.15.0/24 --dport 873 -m conntrack --ctstate
+NEW,ESTABLISHED -j ACCEPT
+
+Allow All Incoming HTTP and HTTPS
+iptables -A INPUT -p tcp -m multiport --dports 80,443 -m conntrack --ctstate
+NEW,ESTABLISHED -j ACCEPT
+
+Allow MySQL from Specific IP Address or Subnet
+iptables -A INPUT -p tcp -s 15.15.15.0/24 --dport 3306 -m conntrack --ctstate
+NEW,ESTABLISHED -j ACCEPT
+
+Allow MySQL to Specific Network Interface
+iptables -A INPUT -i eth1 -p tcp --dport 3306 -m conntrack --ctstate NEW,ESTABLISHED -j
+ACCEPT
+
+*FIREWALL*
+
+host1 http in & ssh out
+#service httpd status
+#iptables -P INPUT DROP
+#iptables -P OUTPUT DROP
+#sudo iptables -A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISH -j ACCEPT
+#sudo iptables -A OUTPUT --sort 80 -m conntrack --ctstate ESTABLISH -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISH -j ACCEPT
+#sudo iptables -A OUTPUT -p tcp --sport 22 -m conntrack --ctstate ESTABLISH -j ACCEPT
+
+ssh root@{host2 ka IP}
+
+host2 ssh in http out
+#service sshd status
+#iptables -P INPUT DROP
+#iptables -P OUTPUT DROP
+#sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISH -j ACCEPT
+#sudo iptables -A OUTPUT --sort 22 -m conntrack --ctstate ESTABLISH -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISH -j ACCEPT
+#sudo iptables -A OUTPUT -p tcp --dport 80 -m conntrack --ctstate ESTABLISH -j ACCEPT
+
+go to browser and type
+http://{host1 ka ip}
+
+
+
+
+
+
+Exp3b: WIRESHARK
+
+Installing tcpdump:
+# sudo apt-get install tcpdump
+
+tcpdump -D : display all available interfaces
+tcpdump -i wlo1 : capture traffic at the interface “wlo1”
+tcpdump -i any : capture traffic at any interface  
+tcpdump -i wlo1 port 80 : capture traffic at the interface “wlo1” on port 80
+tcpdump -i wlo1 -c 5 : capture 5 packets at the interface “wlo1”
+tcpdump -i wlo1 tcp : capture only tcp traffic at interface “wlo1”
+tcpdump -i wlo1 src 192.168.43.169: capture traffic at interface “wlo1” with source IP 192.168.43.169
+
+tcpdump -i wlo1 dst 192.168.43.169 : capture traffic at interface “wlo1” with destination IP 192.168.43.169
+
+To capture only TCP SYN packets:
+sudo tcpdump -i wlo1 "tcp[tcpflags] & (tcp-syn) != 0" >/home/apsit/Desktop/syn.txt
+
+To capture only TCP ACK packets:
+sudo tcpdump -i wlo1 "tcp[tcpflags] & (tcp-ack) != 0" >/home/apsit/Desktop/ack.txt
+
+To capture only TCP FIN packets:
+sudo tcpdump -i wlo1 "tcp[tcpflags] & (tcp-fin) != 0" >/home/apsit/Desktop/fin.txt
+
+To capture only TCP SYN or ACK packets:
+sudo tcpdump -r <interface> "tcp[tcpflags] & (tcp-syn|tcp-ack) != 0"
+
+To capture ssh packet:
+sudo tcpdump -i wlo1 -x -X -A -nvvv port 22 > ssh.txt
+Ssh apsit@192.168.43.32
+
+To capture telnet packet:
+sudo tcpdump -i wlo1 -x -X -A -nvvv port 23 > telnet.txt
+Telnet 192.168.43.32
+
+Installing wireshark :
+sudo apt-get install wireshark
+
+Telnet 192.168.43.32
+
+Promiscuous mode can be enabled
+Sudo ip link set wlo1 promisc on
+
+Promiscuous mode can be disabled
+Sudo ip link set wlo1 promisc off
+
+
+
+
+
+Exp4: n map
+
+sudo apt-get install nmap
+
+To scan a single system: nmap -sP 192.168.43.32(dusre ka )
+
+To scan the entire subnet, then the command is
+nmap target/subnetmask
+nmap -sP 192.168.43.32/24 (dusre ka)
+
+To scan a multiple targets, all you need to do is to separate each target via space:
+nmap target target1 target2
+nmap -sP 192.168.43.32 192.168.43.169(2 logo k opponent)
+
+To see the list of all the hosts that are being scanned, then use the command with an -sL
+parameter:
+nmap -sL target/cdir
+nmap -sL 192.168.43.32 192.168.43.169
+
+To scan the entire subnet but not a specific IP addresses because it might be dangerous for us. In
+this scenario, use the Nmap command with the excluding parameter:
+IP address 192.168.43.32 is excluded in nmap scan.
+nmap 192.168.43.0/24 —exclude 192.168.43.32
+
+To scan a specific port on the target machines
+nmap -p 80,21,23 192.168.43.32
+
+To know the open ports on target system:nmap -open 192.168.43.32
+nmap -open 192.168.43.32
+
+Scans the N highest-ratio ports found in nmap-services file:
+nmap --top-ports 5 192.168.43.32
+
+TCP SYN Scan (-sS)
+nmap -sS 192.168.43.32
+
+TCP connect() scan (-sT)
+nmap -sT 192.168.43.32
+
+UDP Scan (-sU)
+nmap -sU 192.168.43.32
+
+FIN Scan (-sF)
+Version Detection (-sV)
+
+Idle Scan (-sI)
+nmap -sI zombie_host target_host
+
+
+
+
+
+
+
+Exp6:snort
+
+sudo apt-get install snort
+
+Editing snort configuration files
+sudo vi +45 /etc/snort/snort.conf
+
+45th line Should look like this
+ipvar HOME_NET 192.168.43.130/24
+
+sudo vi +104 /etc/snort/snort.conf
+Following the line at 104, make sure your paths look like this.
+var RULE_PATH /etc/snort/rules
+var SO_RULE_PATH /etc/snort/so_rules
+var PREPROC_RULE_PATH /etc/snort/preproc_rules
+var WHITE_LIST_PATH /etc/snort/rules/iplists
+var BLACK_LIST_PATH /etc/snort/rules/iplists
+
+sudo vi +545 /etc/snort/snort.conf
+UN-comment the 545th line and make it look like this
+include $RULE_PATH/local.rules
+
+
+
+
+
+sudo gedit /etc/snort/rules/local.rules
+empty
+Add the rule :
+alert icmp any any -> $HOME_NET any (msg:”ICMP test”;sid:1000001; rev:1;)
+
+Test Snort :
+sudo snort -T -c /etc/snort/snort.conf
+
+Test Snort :
+sudo snort -T -c /etc/snort/rules/local.rules
+
+start Snort in IDS mode and tell it to display alerts to the console:
+sudo snort -A console -c /etc/snort/snort.conf
+ping it from other system
+As soon as the alert gets generated snort also creates log file of all the activity. Which can be seen in /var/log/snort path.
+
+cat alert
+
+Read log file
+Sudo tcpdump -r snort.log.1665381601
+
+
+
+
+
+
+
+
+
+Exp7:
+
+Exp8: SQL Injection SQL Map
+
+
+
+
+Website url: http://testphp.vulnweb.com/artists.php?artist=1
+
+ install sqlmap use following command: sudo apt-get install sqlmap
+sqlmap -h
+
+ test a website for SQL Injection vulnerability
+sqlmap -u http://testphp.vulnweb.com/artists.php?artist=1
+sqlmap -u http://testphp.vulnweb.com/artists.php?cat=1  --dbs
+
+List information about Tables present in a particular Database
+sqlmap -u http://testphp.vulnweb.com/listproducts.php?cat=1 -D acuart –tables
+
+ find the column in the database
+sqlmap -u  http://testphp.vulnweb.com/listproducts.php?cat=1 -D acuart -T users --columns
+
+To find username in uname
+sqlmap -u  http://testphp.vulnweb.com/listproducts.php?cat=1 -D acuart -T users -C uname –dump
+
+Same with ‘pass’ instead of ‘uname’
+
+Try login using found uname and pass on website
+
+
+
+
+
+
+Exp10: hashing algo(md5,sha1)
+
+cd (any directory)
+echo demo md5sum>example.txt
+md5sum example.txt
+echo "hellloooo">example.txt
+
+cat example.txt
+md5sum example.txt
+
+sha1sum example.txt
+echo testing sha1>example.txt
+
+Sha256sum example.txt
+.     224
+.     512
+.     384
+
+
+
+Exp11: Cryptool
+
+Software Required : CrypTool 1.4.41
+
+Exp12: RSA
+
+Software Required : CrypTool 1.4.41
+
+MD5
+cd /home/apsit/Music
+echo This is demo of md5sum>example.txt
+md5sum example.txt
+
+echo This is to check message integrity>example.txt
+
+cat example.txt
+md5sum example.txt
+
+sha1sum example.txt
+echo testing sha1>example.txt
+sha1sum example.txt
+
+sha256sum example.txt
+sha224sum example.txt
+sha512sum example.txt
+sha384sum example.txt
+
+ls 
+md5sum ubuntu-14.04.5-desktop-adm64.ios
+
+
+
+MAC spoofing 
+create 2 hosts 
+sudo apt-get install arpwatch 
+service arpwatch status
+ping both host 
+
+host 2
+tail -f /var/log/syslog
+
+host 1 
+sudo ifconfig enp1s0 hw ether {mac add} 
+
+ping to host 2 
+
+
+John the ripper 
+
+sodo apt-get install john 
+john -test 
+cd /etc 
+ls
+cd john
+sudo adduser name 
+touch 1.txt
+nano 1.txt 
+    add user name and save 
+sudo cat /etc/shadow
+john 1.txt 
+john -show 1.txt 
+
+
+
+
+
